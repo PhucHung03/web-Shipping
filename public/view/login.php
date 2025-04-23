@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     if (!empty($email) && !empty($password)) {
         try {
-            // Kiểm tra xem email có tồn tại trong cơ sở dữ liệu không
+            // Kiểm tra email
             $stmt = $conn->prepare("SELECT id_khachhang, password FROM khach WHERE email = ?");
             $stmt->bind_param("s", $email);
             $stmt->execute();
@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $_SESSION['email'] = $email;
                     $_SESSION['username'] = $user['hoTen'];
 
-                    // Chuyển hướng người dùng đến trang quản lý hoặc trang chủ
+
                     header("Location: index.php?url=trangchu");
                     exit();
                 } else {

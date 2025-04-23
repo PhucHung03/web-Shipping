@@ -29,8 +29,8 @@ if (!isset($_GET['url'])) {
         case 'logout':
             require_once("./public/view/logout.php");
             break;
-        case 'tracking':
-            require_once("./public/view/tracking.php");
+        case 'contact':
+            require_once("./public/view/contact.php");
             break;
     }
 }

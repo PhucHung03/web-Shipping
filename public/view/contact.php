@@ -1,9 +1,8 @@
 <?php
+require_once './config/conn.php';
+
 session_start();
 
-require_once 'database.php';
-$database = new Database();
-$conn = $database->connect();
 
 $success_message = '';
 $error_message = '';
@@ -15,37 +14,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $message = trim($_POST['message'] ?? '');
 
     if (empty($name) || empty($email) || empty($subject) || empty($message)) {
-        $error_message = 'All fields are required.';
+        $error_message = 'Vui lòng điền đầy đủ thông tin.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error_message = 'Please enter a valid email address.';
+        $error_message = 'Vui lòng nhập địa chỉ email hợp lệ.';
     } else {
         try {
+            // Sử dụng mysqli thay vì PDO
             $stmt = $conn->prepare("INSERT INTO contact_messages (name, email, subject, message, created_at) VALUES (?, ?, ?, ?, NOW())");
-            $stmt->execute([$name, $email, $subject, $message]);
-            $success_message = 'Thank you for your message. We will get back to you soon!';
+            $stmt->bind_param("ssss", $name, $email, $subject, $message);
+            $result = $stmt->execute();
             
-            // Send email notification to admin (you'll need to configure your email settings)
-            $to = "admin@shipping.com";
-            $headers = "From: " . $email . "\r\n";
-            $headers .= "Reply-To: " . $email . "\r\n";
-            $headers .= "X-Mailer: PHP/" . phpversion();
+            if ($result) {
+                $success_message = 'Cảm ơn bạn đã gửi tin nhắn. Chúng tôi sẽ liên hệ lại với bạn sớm!';
+                
+                // Gửi email thông báo cho quản trị viên
+                $to = "admin@shipping.com";
+                $headers = "From: " . $email . "\r\n";
+                $headers .= "Reply-To: " . $email . "\r\n";
+                $headers .= "X-Mailer: PHP/" . phpversion();
+                $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+                
+                mail($to, "Tin nhắn liên hệ mới: " . $subject, $message, $headers);
+            } else {
+                $error_message = 'Xin lỗi, đã xảy ra lỗi khi gửi tin nhắn. Vui lòng thử lại sau.';
+            }
             
-            mail($to, "New Contact Form Submission: " . $subject, $message, $headers);
-            
-        } catch (PDOException $e) {
-            $error_message = 'Sorry, there was an error sending your message. Please try again later.';
+        } catch (Exception $e) {
+            $error_message = 'Xin lỗi, đã xảy ra lỗi khi gửi tin nhắn. Vui lòng thử lại sau.';
         }
     }
 }
 ?>
-    <!-- Contact Section -->
+
     <div class="container py-5">
         <div class="row">
-            <!-- Contact Form -->
+            <!-- Form Liên hệ -->
             <div class="col-lg-8">
                 <div class="card shadow-sm">
                     <div class="card-body p-5">
-                        <h2 class="card-title mb-4">Get in Touch</h2>
+                        <h2 class="card-title mb-4">Liên hệ với chúng tôi</h2>
                         
                         <?php if ($success_message): ?>
                             <div class="alert alert-success" role="alert">
@@ -63,14 +70,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label for="name" class="form-label">Your Name</label>
+                                        <label for="name" class="form-label">Họ và tên</label>
                                         <input type="text" class="form-control form-control-lg" id="name" name="name" 
                                                required value="<?php echo htmlspecialchars($_POST['name'] ?? ''); ?>">
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label for="email" class="form-label">Email Address</label>
+                                        <label for="email" class="form-label">Địa chỉ email</label>
                                         <input type="email" class="form-control form-control-lg" id="email" name="email" 
                                                required value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>">
                                     </div>
@@ -78,56 +85,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
 
                             <div class="mb-3">
-                                <label for="subject" class="form-label">Subject</label>
+                                <label for="subject" class="form-label">Tiêu đề</label>
                                 <input type="text" class="form-control form-control-lg" id="subject" name="subject" 
                                        required value="<?php echo htmlspecialchars($_POST['subject'] ?? ''); ?>">
                             </div>
 
                             <div class="mb-4">
-                                <label for="message" class="form-label">Message</label>
+                                <label for="message" class="form-label">Nội dung</label>
                                 <textarea class="form-control form-control-lg" id="message" name="message" rows="5" 
                                           required><?php echo htmlspecialchars($_POST['message'] ?? ''); ?></textarea>
                             </div>
 
                             <div class="d-grid">
-                                <button type="submit" class="btn btn-primary btn-lg">Send Message</button>
+                                <button type="submit" class="btn btn-primary btn-lg">Gửi tin nhắn</button>
                             </div>
                         </form>
                     </div>
                 </div>
             </div>
 
-            <!-- Contact Information -->
+            <!-- Thông tin liên hệ -->
             <div class="col-lg-4">
                 <div class="card shadow-sm mb-4">
                     <div class="card-body">
-                        <h4 class="card-title mb-4">Contact Information</h4>
+                        <h4 class="card-title mb-4">Thông tin liên hệ</h4>
                         <ul class="list-unstyled">
                             <li class="mb-3">
                                 <i class="fas fa-map-marker-alt text-primary me-2"></i>
-                                123 Shipping Street<br>
-                                City, State 12345
+                                12 Lê Thánh Tôn<br>
+                                phường Bến Nghé, Quận 1, TP.HCM
                             </li>
                             <li class="mb-3">
                                 <i class="fas fa-phone text-primary me-2"></i>
-                                +1 (234) 567-8900
+                                +84 123123123
                             </li>
                             <li class="mb-3">
                                 <i class="fas fa-envelope text-primary me-2"></i>
-                                info@shipping.com
+                                info@flybeeshipping.com
                             </li>
                             <li class="mb-3">
                                 <i class="fas fa-clock text-primary me-2"></i>
-                                Mon - Fri: 9:00 AM - 6:00 PM
+                                Thứ 2 - Thứ 6: 8:00 - 17:30
                             </li>
                         </ul>
                     </div>
                 </div>
 
-                <!-- Map -->
+                <!-- Bản đồ -->
                 <div class="card shadow-sm">
                     <div class="card-body p-0">
-                        <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3022.1!2d-73.98!3d40.75!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNDDCsDQ1JzAwLjAiTiA3M8KwNTgnNDguMCJX!5e0!3m2!1sen!2sus!4v1234567890" 
+                        <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.5177580045246!2d106.69891731533417!3d10.771597192324364!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752f3c586421ef%3A0xb606461945d70bc9!2zVHLGsOG7nW5nIMSQ4bqhaSBo4buNYyBLaG9hIGjhu41jIFThu7Egbmhpw6puIFRQLiBIQ00!5e0!3m2!1svi!2s!4v1682225583059!5m2!1svi!2s" 
                                 width="100%" height="300" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
                     </div>
                 </div>

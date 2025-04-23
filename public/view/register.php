@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     // Mã hóa mật khẩu
                     $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-                    // Thêm người dùng mới vào bảng khach
+                    // Thêm người dùng mới
                     $stmt = $conn->prepare("INSERT INTO khach (hoTen, soDienThoai, diaChi, email, password) VALUES (?, ?, ?, ?, ?)");
                     $stmt->execute([$name, $phone, $address, $email, $hashed_password]);
 
