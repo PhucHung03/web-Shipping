@@ -14,16 +14,16 @@ if (isset($_GET['tracking_number'])) {
         $query = "
             SELECT o.maVanDon, o.ngayTaoDon, o.COD, o.giaTriHang,
                    s.tenNguoiGui, s.sdtNguoiGui, s.diaChiNguoiGui,
-                   r.tenNguoiNhan, r.sdtNguoiNhan,
+                   r.tenNguoiNhan, r.soDienThoai,
                    a.diaChiNguoiNhan, a.tinh_tp, a.quan_huyen, a.phuong_xa,
                    f.tongPhi, f.phiDichVu,f.benTraPhi,
-                   os.status_name as trangThai
-            FROM orders o
-            JOIN senders s ON o.sender_id = s.sender_id
-            JOIN receivers r ON o.receiver_id = r.receiver_id
-            JOIN addresses a ON r.address_id = a.address_id
-            JOIN fees f ON o.fee_id = f.fee_id
-            JOIN orderstatuses os ON o.current_status_id = os.status_id
+                   os.tenTrangThai as trangThai
+            FROM donHang o
+            JOIN nguoigui s ON o.id_nguoiGui = s.id_nguoiGui
+            JOIN nguoinhan r ON o.id_nguoiNhan = r.id_nguoiNhan
+            JOIN diachi a ON r.id_diaChi = a.id_diaChi
+            JOIN phi f ON o.id_phi = f.id_phi
+            JOIN trangthai os ON o.id_trangThai = os.id_trangThai
             WHERE o.maVanDon = ?";
 
         $stmt = $conn->prepare($query);
@@ -35,11 +35,11 @@ if (isset($_GET['tracking_number'])) {
         // Nếu tìm thấy đơn hàng, truy vấn lịch sử trạng thái
         if ($tracking_result) {
             $query = "
-                SELECT osh.status_timestamp, os.status_name, osh.location, osh.notes
-                FROM orderstatushistory osh
-                JOIN orderstatuses os ON osh.status_id = os.status_id
+                SELECT osh.mocThoiGian, os.tenTrangThai, osh.diaDiem, osh.HIMnotes
+                FROM lichsu_trangthai osh
+                JOIN trangthai os ON osh.id_trangThai = os.id_trangThai
                 WHERE osh.maVanDon = ?
-                ORDER BY osh.status_timestamp DESC";
+                ORDER BY osh.mocThoiGian DESC";
 
             $stmt = $conn->prepare($query);
             $stmt->bind_param("s", $maVanDon);
@@ -109,7 +109,7 @@ if (isset($_GET['tracking_number'])) {
                                             <div class="col-md-6">
                                                 <h5>Thông tin người nhận</h5>
                                                 <p><strong>Người nhận:</strong> <?php echo htmlspecialchars($tracking_result['tenNguoiNhan']); ?></p>
-                                                <p><strong>SĐT:</strong> <?php echo htmlspecialchars($tracking_result['sdtNguoiNhan']); ?></p>
+                                                <p><strong>SĐT:</strong> <?php echo htmlspecialchars($tracking_result['soDienThoai']); ?></p>
                                                 <p><strong>Địa chỉ:</strong> <?php echo htmlspecialchars($tracking_result['diaChiNguoiNhan']); ?>,
                                                     <?php echo htmlspecialchars($tracking_result['phuong_xa']); ?>,
                                                     <?php echo htmlspecialchars($tracking_result['quan_huyen']); ?>,
@@ -144,13 +144,13 @@ if (isset($_GET['tracking_number'])) {
                                                 $iconClass = 'fa-box';
                                                 $bgClass = 'bg-info';
 
-                                                if (stripos($history['status_name'], 'giao') !== false) {
+                                                if (stripos($history['tenTrangThai'], 'giao') !== false) {
                                                     $iconClass = 'fa-truck';
                                                     $bgClass = 'bg-primary';
-                                                } elseif (stripos($history['status_name'], 'thành công') !== false || stripos($history['status_name'], 'hoàn thành') !== false) {
+                                                } elseif (stripos($history['tenTrangThai'], 'thành công') !== false || stripos($history['tenTrangThai'], 'hoàn thành') !== false) {
                                                     $iconClass = 'fa-check';
                                                     $bgClass = 'bg-success';
-                                                } elseif (stripos($history['status_name'], 'hủy') !== false) {
+                                                } elseif (stripos($history['tenTrangThai'], 'hủy') !== false) {
                                                     $iconClass = 'fa-times';
                                                     $bgClass = 'bg-danger';
                                                 }
@@ -159,10 +159,10 @@ if (isset($_GET['tracking_number'])) {
                                                     <i class="fas <?php echo $iconClass; ?> text-white"></i>
                                                 </div>
                                                 <div class="timeline-content">
-                                                    <h5><?php echo htmlspecialchars($history['status_name']); ?></h5>
-                                                    <p class="text-muted"><?php echo date('d/m/Y H:i', strtotime($history['status_timestamp'])); ?></p>
-                                                    <?php if (!empty($history['notes'])): ?>
-                                                        <p><strong>Ghi chú:</strong> <?php echo htmlspecialchars($history['notes']); ?></p>
+                                                    <h5><?php echo htmlspecialchars($history['tenTrangThai']); ?></h5>
+                                                    <p class="text-muted"><?php echo date('d/m/Y H:i', strtotime($history['mocThoiGian'])); ?></p>
+                                                    <?php if (!empty($history['HIMnotes'])): ?>
+                                                        <p><strong>Ghi chú:</strong> <?php echo htmlspecialchars($history['HIMnotes']); ?></p>
                                                     <?php endif; ?>
                                                 </div>
                                             </div>

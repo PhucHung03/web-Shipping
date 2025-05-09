@@ -50,51 +50,51 @@ if (isset($_POST['btnTaoDon'])) {
     $product_quantities = $_POST['product-quantity'];
     $product_codes = $_POST['product-code'];
 
-    // Bắt đầu transaction
+    // 
     $conn->begin_transaction();
 
     try {
-        // 1. Insert người gửi
-        $conn->query("INSERT INTO senders (tenNguoiGui, diaChiNguoiGui, sdtNguoiGui) 
+        //người gửi
+        $conn->query("INSERT INTO nguoigui(tenNguoiGui, diaChiNguoiGui, sdtNguoiGui) 
                       VALUES ('$sender_name', '$sender_address', '$sender_phone')");
         $sender_id = $conn->insert_id;
 
         // 2. Insert địa chỉ người nhận
-        $conn->query("INSERT INTO addresses (diaChiNguoiNhan, tinh_tp, quan_huyen, phuong_xa)
+        $conn->query("INSERT INTO diachi (diaChiNguoiNhan, tinh_tp, quan_huyen, phuong_xa)
                       VALUES ('$receiver_address', '$province', '$district', '$ward')");
         $address_id = $conn->insert_id;
 
         // 3. Insert người nhận
-        $conn->query("INSERT INTO receivers (tenNguoiNhan, sdtNguoiNhan, address_id)
+        $conn->query("INSERT INTO nguoinhan(tenNguoiNhan, soDienThoai, id_diaChi)
                       VALUES ('$receiver_name', '$receiver_phone', '$address_id')");
         $receiver_id = $conn->insert_id;
 
         // 4. Insert trạng thái đơn hàng mặc định
-        $result = $conn->query("SELECT status_id FROM orderstatuses WHERE status_name = 'Đã tạo'");
+        $result = $conn->query("SELECT id_trangThai FROM trangthai WHERE tenTrangThai = 'Đã tạo'");
         if ($result && $result->num_rows > 0) {
             $row = $result->fetch_assoc();
-            $status_id = $row['status_id'];
+            $status_id = $row['id_trangThai'];
         } else {
             throw new Exception("Trạng thái 'Đã tạo' không tồn tại trong cơ sở dữ liệu.");
         }
 
         // 5. Insert đơn hàng
-        $conn->query("INSERT INTO orders (
-                        maVanDon,id_khachhang, hinhThucGui, KL_DH, dai, rong, cao, giaTriHang, COD, ghiChu, ngayTaoDon, 
-                        sender_id, receiver_id, fee_id, current_status_id
+        $conn->query("INSERT INTO donhang (
+                        maVanDon,id_khachHang, hinhThucGui, KL_DH, dai, rong, cao, giaTriHang, COD, ghiChu, ngayTaoDon, 
+                        id_nguoiGui, id_nguoiNhan, id_phi, id_trangThai
                       ) VALUES (
                         '$maVanDon','$id_khachhang','$shipping_option', '$total_weight', '$product_length', '$product_width', '$product_height',
                         '$product_value', '$COD', '$note', '$created_at',
-                        '$sender_id', '$receiver_id', NULL, '$status_id'
+                        '$sender_id', '$receiver_id', NULL, '$id_trangThai'
                       )");
 
         // 6. Insert phí giao hàng
-        $conn->query("INSERT INTO fees (maVanDon, phiDichVu, phiKhaiGia, phiCOD, tongPhi, benTraPhi) 
+        $conn->query("INSERT INTO phi (maVanDon, phiDichVu, phiKhaiGia, phiCOD, tongPhi, benTraPhi) 
                       VALUES ('$maVanDon', '$cost_ship', '$phiKhaiGia', '$cod_ship', '$total_costShip', '$thanh_toan')");
         $fee_id = $conn->insert_id;
 
         // 7. Cập nhật lại fee_id vào bảng orders
-        $conn->query("UPDATE orders SET fee_id = '$fee_id' WHERE maVanDon = '$maVanDon'");
+        $conn->query("UPDATE donhang SET id_phi = '$fee_id' WHERE maVanDon = '$maVanDon'");
 
         // 8. Insert sản phẩm (danh sách)
         for ($i = 0; $i < count($product_names); $i++) {
@@ -103,12 +103,12 @@ if (isset($_POST['btnTaoDon'])) {
             $slSP = $product_quantities[$i];
             $maSP = $product_codes[$i];
 
-            $conn->query("INSERT INTO products (maVanDon, maSP, tenSP, KL_SP, SL_SP)
+            $conn->query("INSERT INTO sanpham (maVanDon, maSP, tenSanPham, khoiLuong, soLuong)
                           VALUES ('$maVanDon', '$maSP', '$tenSP', '$klSP', '$slSP')");
         }
 
         // 9. Insert lịch sử trạng thái đơn hàng
-        $conn->query("INSERT INTO orderstatushistory (maVanDon, status_id, status_timestamp, location, notes)
+        $conn->query("INSERT INTO lichsu_trangthai (maVanDon, id_TrangThai, mocThoiGian, diaDiem, HIMnotes)
                       VALUES ('$maVanDon', '$status_id', '$created_at', '$province', 'Tạo đơn thành công')");
 
         // Commit transaction

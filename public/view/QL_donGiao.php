@@ -19,13 +19,13 @@ $status = isset($_GET['status_name']) ? $_GET['status_name'] : 'all';
 $date = isset($_GET['date']) ? $_GET['date'] : '';
 
 // Xây dựng câu truy vấn
-$sql = "SELECT o.maVanDon, o.ngayTaoDon, s.tenNguoiGui, r.tenNguoiNhan, o.COD, f.tongPhi, f.benTraPhi, os.status_name
-            FROM orders o
-            JOIN senders s ON o.sender_id = s.sender_id
-            JOIN receivers r ON o.receiver_id = r.receiver_id
-            JOIN fees f ON o.fee_id = f.fee_id
-            JOIN orderstatuses os ON o.current_status_id = os.status_id
-            WHERE o.id_khachhang = $user_id"; 
+$sql = "SELECT o.maVanDon, o.ngayTaoDon, s.tenNguoiGui, r.tenNguoiNhan, o.COD, f.tongPhi, f.benTraPhi, os.tenTrangThai
+            FROM donhang o
+            JOIN nguoigui s ON o.id_nguoiGui = s.id_nguoiGui
+            JOIN nguoinhan r ON o.id_nguoiNhan = r.id_nguoiNhan
+            JOIN phi f ON o.id_phi = f.id_phi
+            JOIN trangthai os ON o.id_trangThai = os.id_trangThai
+            WHERE o.id_khachHang = $user_id"; 
 
 // Điều kiện tìm kiếm
 if ($search) {
@@ -36,7 +36,7 @@ if ($search) {
 // Điều kiện lọc trạng thái
 if ($status !== 'all') {
     $status = $conn->real_escape_string($status);
-    $sql .= " AND os.status_name = '$status'";
+    $sql .= " AND os.tenTrangThai = '$status'";
 }
 
 // Điều kiện lọc ngày
@@ -107,7 +107,7 @@ $result = $conn->query($sql);
                     while ($row = $result->fetch_assoc()) {
                         // Chuẩn hóa trạng thái để gán lớp CSS
                         $status_class = '';
-                        switch ($row['status_name']) {
+                        switch ($row['tenTrangThai']) {
                             case 'Đã tạo':
                                 $status_class = 'status-waitconfirm';
                                 break;
@@ -134,7 +134,7 @@ $result = $conn->query($sql);
                                 break;
                         }
                 ?>
-                        <tr data-status="<?php echo htmlspecialchars($row['status_name']); ?>" data-date="<?php echo date('Y-m-d', strtotime($row['ngayTaoDon'])); ?>">
+                        <tr data-status="<?php echo htmlspecialchars($row['tenTrangThai']); ?>" data-date="<?php echo date('Y-m-d', strtotime($row['ngayTaoDon'])); ?>">
                             <td><?php echo $stt++; ?></td>
                             <td><?php echo htmlspecialchars($row['maVanDon']); ?></td>
                             <td><?php echo htmlspecialchars($row['tenNguoiGui']); ?></td>
@@ -142,7 +142,7 @@ $result = $conn->query($sql);
                             <td><?php echo number_format($row['COD'], 0, ',', '.'); ?></td>
                             <td><?php echo number_format($row['tongPhi'], 0, ',', '.'); ?></td>
                             <td><?php echo htmlspecialchars($row['benTraPhi']); ?></td>
-                            <td><span class="status-badge <?php echo $status_class; ?>"><?php echo htmlspecialchars($row['status_name']); ?></span></td>
+                            <td><span class="status-badge <?php echo $status_class; ?>"><?php echo htmlspecialchars($row['tenTrangThai']); ?></span></td>
                             <td>
                                 <button class="btn btn-sm btn-info" onclick="showOrderDetails()">Chi tiết</button>
                                 <button class="btn btn-sm btn-danger" onclick="showOrderDetails()">Sửa</button>
@@ -157,4 +157,4 @@ $result = $conn->query($sql);
             </tbody>
         </table>
     </div>
-</div>
+</div> 

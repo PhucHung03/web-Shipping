@@ -12,20 +12,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (!empty($email) && !empty($password)) {
         try {
             // Kiểm tra email
-            $stmt = $conn->prepare("SELECT id_khachhang, password FROM khach WHERE email = ?");
+            $stmt = $conn->prepare("SELECT id_khachHang, password, tenKhachHang FROM khachhang WHERE email = ?");
             $stmt->bind_param("s", $email);
             $stmt->execute();
             $result = $stmt->get_result();
             $user = $result->fetch_assoc();
-
+            
+            
+            // Kiểm tra người dùng            
             if ($user) {
                 // So sánh mật khẩu đã mã hóa
                 if (password_verify($password, $user['password'])) {
                     // Lưu thông tin người dùng vào session
-                    $_SESSION['user_id'] = $user['id_khachhang'];
+                    $_SESSION['user_id'] = $user['id_khachHang'];
                     $_SESSION['email'] = $email;
-                    $_SESSION['username'] = $user['hoTen'];
-
+                    $_SESSION['username'] = $user['tenKhachHang'];
 
                     header("Location: index.php?url=trangchu");
                     exit();

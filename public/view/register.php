@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (!empty($name) && !empty($email) && !empty($password) && !empty($confirm_password) && !empty($address)) {
         if ($password === $confirm_password) {
             try {
-                $stmt = $conn->prepare("SELECT id_khachhang FROM khach WHERE email = ?");
+                $stmt = $conn->prepare("SELECT id_khachHang FROM khachhang WHERE email = ?");
                 $stmt->bind_param("s", $email);
                 $stmt->execute();
                 $result = $stmt->get_result();
@@ -30,8 +30,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
                     // Thêm người dùng mới
-                    $stmt = $conn->prepare("INSERT INTO khach (hoTen, soDienThoai, diaChi, email, password) VALUES (?, ?, ?, ?, ?)");
-                    $stmt->execute([$name, $phone, $address, $email, $hashed_password]);
+                    $stmt = $conn->prepare("INSERT INTO khachhang (tenKhachHang, soDienThoai, diaChi, email, password) VALUES (?, ?, ?, ?, ?)");
+                    $stmt->bind_param("sssss", $name, $phone, $address, $email, $hashed_password);
+                    $stmt->execute();
 
                     $success = 'Đăng ký thành công! Đang chuyển đến trang đăng nhập...';
                     header("refresh:2;url=index.php?url=login");
