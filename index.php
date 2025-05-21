@@ -32,9 +32,31 @@ if (!isset($_GET['url'])) {
         case 'tracking':
             require_once("./public/view/tracking.php");
             break;
+        case 'detail-orders':
+            require_once("./public/view/detail_donGiao.php");
+            break;
+        case 'profile':
+            require_once("./public/view/user_info.php");
+            break;
+        case 'update-order':
+            require_once("./public/view/update_order.php");
+            break;
+        case 'forgot_password':
+            require_once("./public/view/forgot_password.php");
+            break;
+        case 'verify_otp':
+            require_once("./public/view/verify_otp.php");
+            break;
+        case 'reset_password':
+            require_once("./public/view/reset_password.php");
+            break;
+        case 'cancel-order':
+            require_once("./public/view/cancel_order.php");
+            break;
+        case 'gioiThieu':
+            require_once("./public/view/gioithieu.php");
+            break;
     }
 }
-
-
 
 require_once("./component/footer.php");

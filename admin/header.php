@@ -2,7 +2,9 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-require 'db.php';
+require '../config/conn.php';
+$mysqli = require '../config/conn.php';
+
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit;
@@ -21,195 +23,74 @@ $unreadCount = (int)$rowCount['cnt'];
   <meta charset="UTF-8">
   <title>Quản lý giao hàng</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- 1. Load Bootstrap CSS NGAY ĐẦU -->
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-    rel="stylesheet">
-
-  <!-- 2. Load Bootstrap Icons nếu dùng -->
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css"
-    rel="stylesheet">
-  <!-- Font & CSS cơ bản -->
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-
-  <style>
-    * { box-sizing: border-box; margin:0; padding:0; }
-    body {
-      font-family: 'Roboto', sans-serif;
-      display: flex;
-      min-height: 100vh;
-      background: #f4f6f8;
-    }
-    /* Thanh ngang (topbar) */
-    .topbar {
-      position: fixed; top: 0; left: 0; right: 0;
-      height: 60px;
-      background: #0dcaf0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 1.5rem;
-      color: #ecf0f1;
-      z-index: 100;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .topbar .logo {
-      font-size: 1.25rem; font-weight: 700;
-    }
-    .topbar .logout {
-      text-decoration: none;
-      color: #ecf0f1;
-      font-weight: 500;
-      transition: color .2s;
-    }
-    .topbar .logout:hover { color: #e74c3c; }
-
-    /* Sidebar trái */
-    .sidebar {
-      width: 220px;
-      padding-top: 60px; /* để tránh đè topbar */
-      background: #111212;
-      position: fixed;
-      top: 0; bottom: 0; left: 0;
-      display: flex;
-      flex-direction: column;
-    }
-    .sidebar a {
-      color: #ecf0f1;
-      padding: .75rem 1rem;
-      text-decoration: none;
-      transition: background .2s;
-    }
-    .sidebar a:hover {
-      background: #0dcaf0;
-    }
-    .notification {
-      position: relative;
-      padding: .75rem 1rem;
-      cursor: pointer;
-    }
-    .notification .bell-icon { font-size: 1.2rem; }
-    .notification .count {
-      position: absolute; top: 8px; right: 16px;
-      background: #e74c3c; color: #fff;
-      border-radius: 50%; padding: 2px 6px;
-      font-size: .75rem;
-    }
-    .notification .dropdown-content {
-      display: none;
-      position: absolute;
-      left: -200px;
-      top: 50px;
-      background: #fff;
-      width: 280px;
-      max-height: 350px;
-      overflow-y: auto;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-      z-index: 200;
-    }
-    .notification .dropdown-content .item {
-      padding: .75rem;
-      border-bottom: 1px solid #eee;
-      color: black;
-    }
-    .notification .dropdown-content .item:last-child {
-      border-bottom: none;
-    }
-
-    /* Nội dung chính */
-    .main-content {
-      margin: 60px 0 0 220px;
-      padding: 1.5rem;
-      width: calc(100% - 220px);
-    }
-    hr { border: none; border-top: 1px solid #ccc; margin: 0 0 1rem; }
-    .topbar {
-  position: fixed; top: 0; left: 0; right: 0;
-  height: 60px;
-  background: #ff5722;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 1.5rem;
-  color: #ecf0f1;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  z-index: 100;
-}
-
-/* nhóm notification + logout */
-.topbar .actions {
-  display: flex;
-  align-items: center;
-  gap: 1rem;            /* khoảng cách giữa chuông và logout */
-}
-
-/* tuỳ chỉnh chuông */
-.topbar .notification {
-  position: relative;
-  cursor: pointer;
-}
-.topbar .bell-icon {
-  font-size: 1.4rem;
-}
-.topbar .count {
-  position: absolute;
-  background: #e74c3c;
-  color: #fff;
-  border-radius: 50%;
-  padding: 2px 6px;
-  font-size: 0.75rem;
-}
-
-/* nút logout */
-.topbar .logout {
-  text-decoration: none;
-  color: #ecf0f1;
-  font-weight: 500;
-  transition: color .2s;
-}
-.topbar .logout:hover {
-  color: #e74c3c;
-}
-
-  </style>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/header.css">
+  <link rel="stylesheet" href="./css/footer.css">
+  <link rel="stylesheet" href="./css/detail_listOrder.css">
+  
 </head>
 <body>
-
   <!-- Topbar -->
   <header class="topbar">
-    <div  class="logo">🚚 ADMIN</div>
-    <div class="actions">
-    <?php if ($_SESSION['role'] === 2): ?>
-      <div class="notification" id="notif">
-        <span class="bell-icon">🔔</span>
-        <?php if($unreadCount > 0): ?>
-          <span class="count"><?php echo $unreadCount; ?></span>
-        <?php endif; ?>
-        <div id="notif-dropdown" class="dropdown-content"></div>
+    <a href="dashboard.php" style="text-decoration: none; color: inherit;">
+      <div class="logo">
+        <i class="bi bi-truck"></i>
+        <span>ADMIN FLYBEEMOVE</span>
       </div>
-    <?php endif; ?>
-    <a href="logout.php" class="logout">Đăng xuất</a>
-  </div>
+    </a>
+    <div class="actions">
+      <?php if ($_SESSION['role'] === 2): ?>
+        <div class="notification" id="notif">
+          <i class="bi bi-bell bell-icon"></i>
+          <?php if($unreadCount > 0): ?>
+            <span class="count"><?php echo $unreadCount; ?></span>
+          <?php endif; ?>
+          <div id="notif-dropdown" class="dropdown-content"></div>
+        </div>
+      <?php endif; ?>
+      <a href="logout.php" class="logout">
+        <i class="bi bi-box-arrow-right"></i>
+        <span>Đăng xuất</span>
+      </a>
+    </div>
   </header>
 
   <!-- Sidebar -->
   <aside class="sidebar">
     <?php if ($_SESSION['role'] === 1): ?>
-      <a href="orders.php">Phân công nhân viên</a>
-      <a href="tracking.php">Theo dõi giao hàng</a>
-      <a href="lichlamviec.php">Lịch làm việc</a>
-      <a href="index.php">Thống kê</a>
+      <a href="dashboard.php">
+      <i class="bi bi-speedometer"></i>
+        <span>Dashboard</span>
+      </a>
+      <a href="list_orders.php">
+      <i class="bi bi-bag"></i>
+        <span>Quản lý đơn hàng</span>
+      </a>
+      <a href="report.php">
+      <i class="bi bi-bar-chart-line-fill"></i>
+        <span>Báo cáo</span>
+      </a>
+      <a href="orders.php">
+        <i class="bi bi-people"></i>
+        <span>Phân công nhân viên</span>
+      </a>
+      <a href="tracking.php">
+        <i class="bi bi-geo-alt"></i>
+        <span>Theo dõi giao hàng</span>
+      </a>
+      <a href="lichlamviec.php">
+        <i class="bi bi-calendar3"></i>
+        <span>Lịch làm việc</span>
+      </a>
     <?php else: ?>
-      <a href="my_orders.php">Đơn hàng của tôi</a>
-      <a href="donhang_danggiao.php">Đơn hàng đang giao</a>
       
     <?php endif; ?>
   </aside>
 
-  <!-- Nội dung chính -->
+  <!-- Main Content -->
   <main class="main-content">
-    
 
   <script>
   document.getElementById('notif').addEventListener('click', function(e) {

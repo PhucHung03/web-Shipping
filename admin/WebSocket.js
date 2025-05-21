@@ -7,7 +7,7 @@ const querystring = require('querystring');
 
 // Configuration
 const WS_PORT = 8081;
-const UPDATE_URL = 'http://localhost/admin/update_location.php'; // URL to your PHP API
+const UPDATE_URL = 'http://localhost/WebGiaoHang/admin/update_location.php'; // URL to your PHP API
 
 // Khởi tạo server lắng nghe WS_PORT
 const wss = new WebSocket.Server({ port: WS_PORT }, () => {

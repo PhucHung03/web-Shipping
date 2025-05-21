@@ -3,15 +3,15 @@ require_once './config/conn.php';
 
 session_start();
 
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
+// Check login
+if (!isset($_SESSION['id_khach'])) {
     echo "<script>alert('Bạn cần đăng nhập để truy cập trang này.'); window.location.href='index.php?url=login';</script>";
     header('Location: index.php?url=login');
     exit();
 }
 
 // Lấy id của khách hàng đang đăng nhập
-$user_id = $_SESSION['user_id'];
+$user_id = $_SESSION['id_khach'];
 
 // Lấy dữ liệu từ form lọc/tìm kiếm
 $search = isset($_GET['search']) ? $_GET['search'] : '';
@@ -49,8 +49,20 @@ $sql .= " ORDER BY o.ngayTaoDon DESC";
 $result = $conn->query($sql);
 ?>
 
+<div class="container-fluid p-0 mt-5">
+    <div class="row m-0">
+        <div class="col-lg p-0">
+            <div class="banner_gioiThieu">
+                <img src="./public/img/banner/1920px-Hong_Kong_Skyline_Panoram.jpg" alt="" class="w-100">
+                <div class="banner-overlay">
+                    <h4>Quản lí đơn hàng</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 <div class="management-container">
-    <h1 class="mb-4" style="text-align:center;padding:20px">Quản lý đơn giao hàng</h1>
+    <h2 class="mb-4" style="text-align:center;">Đơn hàng của bạn</h2>
 
     <!-- Bộ lọc và tìm kiếm -->
     <form method="GET" action="">
@@ -67,13 +79,12 @@ $result = $conn->query($sql);
                 <select class="form-select status-filter" id="statusFilter" name="status" onchange="filterOrders()">
                     <option value="all" <?php echo $status === 'all' ? 'selected' : ''; ?>>Tất cả</option>
                     <option value="Đã tạo" <?php echo $status === 'Đã tạo' ? 'selected' : ''; ?>>Đã tạo</option>
-                    <option value="Chờ lấy hàng" <?php echo $status === 'Chờ lấy hàng' ? 'selected' : ''; ?>>Chờ lấy hàng</option>
+                    <option value="Đang xử lý" <?php echo $status === 'Đang xử lý' ? 'selected' : ''; ?>>Đang xử lý</option>
                     <option value="Đang giao" <?php echo $status === 'Đang giao' ? 'selected' : ''; ?>>Đang giao</option>
-                    <option value="Đang hoàn hàng" <?php echo $status === 'Đang hoàn hàng' ? 'selected' : ''; ?>>Đang hoàn hàng</option>
                     <option value="Chờ xác nhận giao lại" <?php echo $status === 'Chờ xác nhận giao lại' ? 'selected' : ''; ?>>Chờ xác nhận giao lại</option>
-                    <option value="Hoàn tất" <?php echo $status === 'Hoàn tất' ? 'selected' : ''; ?>>Hoàn tất</option>
-                    <option value="Đơn hủy" <?php echo $status === 'Đơn hủy' ? 'selected' : ''; ?>>Đơn hủy</option>
-                    <option value="Hàng thất lạc - Hư hỏng" <?php echo $status === 'Hàng thất lạc - Hư hỏng' ? 'selected' : ''; ?>>Hàng thất lạc - Hư hỏng</option>
+                    <option value="Đã giao" <?php echo $status === 'Đã giao' ? 'selected' : ''; ?>>Đã giao</option>
+                    <option value="Đã hủy" <?php echo $status === 'Đã hủy' ? 'selected' : ''; ?>>Đã hủy</option>
+                    <option value="Giao không thành công" <?php echo $status === 'Giao không thành công' ? 'selected' : ''; ?>>Giao không thành công</option>
                 </select>
             </div>
             <!-- Lọc theo ngày -->
@@ -111,26 +122,23 @@ $result = $conn->query($sql);
                             case 'Đã tạo':
                                 $status_class = 'status-waitconfirm';
                                 break;
-                            case 'Chờ lấy hàng':
-                                $status_class = 'status-waiting';
-                                break;
+                            case 'Đang xử lý':
+                                    $status_class = 'status-waitconfirm';
+                                    break;
                             case 'Đang giao':
                                 $status_class = 'status-delivering';
-                                break;
-                            case 'Đang hoàn hàng':
-                                $status_class = 'status-returning';
                                 break;
                             case 'Chờ xác nhận giao lại':
                                 $status_class = 'status-reconfirm';
                                 break;
-                            case 'Hoàn tất':
+                            case 'Đã giao':
                                 $status_class = 'status-completed';
                                 break;
-                            case 'Đơn hủy':
-                                $status_class = 'status-canceled';
+                            case 'Giao không thành công':
+                                $status_class = 'status-reconfirm';
                                 break;
-                            case 'Hàng thất lạc - Hư hỏng':
-                                $status_class = 'status-lost-damaged';
+                            case 'Đã hủy':
+                                $status_class = 'status-canceled';
                                 break;
                         }
                 ?>
@@ -144,8 +152,11 @@ $result = $conn->query($sql);
                             <td><?php echo htmlspecialchars($row['benTraPhi']); ?></td>
                             <td><span class="status-badge <?php echo $status_class; ?>"><?php echo htmlspecialchars($row['tenTrangThai']); ?></span></td>
                             <td>
-                                <button class="btn btn-sm btn-info" onclick="showOrderDetails()">Chi tiết</button>
-                                <button class="btn btn-sm btn-danger" onclick="showOrderDetails()">Sửa</button>
+                                <button class="btn btn-sm btn-info" onclick="showOrderDetails('<?php echo htmlspecialchars($row['maVanDon']); ?>')">Chi tiết</button>
+                                <a href="index.php?url=update-order&maVanDon=<?php echo urlencode($row['maVanDon']); ?>" class="btn btn-sm btn-warning">Sửa</a>
+                                <?php if ($row['tenTrangThai'] === 'Đã tạo'): ?>
+                                    
+                                <?php endif; ?>
                             </td>
                         </tr>
                 <?php
@@ -157,4 +168,16 @@ $result = $conn->query($sql);
             </tbody>
         </table>
     </div>
-</div> 
+</div>
+
+<script>
+function showOrderDetails(maVanDon) {
+    window.location.href = 'index.php?url=detail-orders&&maVanDon=' + encodeURIComponent(maVanDon);
+}
+
+function cancelOrder(maVanDon) {
+    if (confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')) {
+        window.location.href = 'index.php?url=cancel-order&maVanDon=' + encodeURIComponent(maVanDon);
+    }
+}
+</script> 

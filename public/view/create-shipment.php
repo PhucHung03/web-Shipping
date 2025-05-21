@@ -1,10 +1,14 @@
 <?php
 require_once './config/conn.php';
+require_once __DIR__ . '/../../admin/vendor/autoload.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
 session_start();
 
 // Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
+if (!isset($_SESSION['id_khach'])) {
     echo "<script>alert('Bạn cần đăng nhập để truy cập trang này.'); window.location.href='index.php?url=login';</script>";
     header('Location: index.php?url=login');
     exit();
@@ -13,7 +17,7 @@ if (!isset($_SESSION['user_id'])) {
 if (isset($_POST['btnTaoDon'])) {
     $maVanDon = "DGH" . date("YmdHis");
     $created_at = date('Y-m-d H:i:s');
-    $id_khachhang = $_SESSION['user_id'];
+    $id_khachhang = $_SESSION['id_khach'];
     // Người gửi
     $sender_name = $_POST['sender_name'];
     $sender_phone = $_POST['sender_phone'];
@@ -85,7 +89,7 @@ if (isset($_POST['btnTaoDon'])) {
                       ) VALUES (
                         '$maVanDon','$id_khachhang','$shipping_option', '$total_weight', '$product_length', '$product_width', '$product_height',
                         '$product_value', '$COD', '$note', '$created_at',
-                        '$sender_id', '$receiver_id', NULL, '$id_trangThai'
+                        '$sender_id', '$receiver_id', NULL, '$status_id'
                       )");
 
         // 6. Insert phí giao hàng
@@ -108,11 +112,196 @@ if (isset($_POST['btnTaoDon'])) {
         }
 
         // 9. Insert lịch sử trạng thái đơn hàng
-        $conn->query("INSERT INTO lichsu_trangthai (maVanDon, id_TrangThai, mocThoiGian, diaDiem, HIMnotes)
+        $conn->query("INSERT INTO lichsu_trangthai (maVanDon, id_trangThai, mocThoiGian, diaDiem, HIMnotes)
                       VALUES ('$maVanDon', '$status_id', '$created_at', '$province', 'Tạo đơn thành công')");
 
         // Commit transaction
         $conn->commit();
+
+        // Send email notification to admin
+        $mail = new PHPMailer(true);
+        
+        // Get admin email
+        $adminQuery = $conn->query("SELECT email FROM nhanvien WHERE phanQuyen = 1 LIMIT 1");
+        $adminEmail = $adminQuery->fetch_assoc()['email'];
+
+        // Server settings
+        $mail->isSMTP();
+        $mail->Host = 'smtp.gmail.com';  // Replace with your SMTP host
+        $mail->SMTPAuth = true;
+        $mail->Username = 'hoanglit652003@gmail.com'; // Replace with your email
+        $mail->Password = 'nhefbuicsvrrtnlz'; // Replace with your app password
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = 587;
+        $mail->CharSet = 'UTF-8';
+
+        // Recipients
+        $mail->setFrom('hoanglit652003@gmail.com', 'FlybeeMove System');
+        $mail->addAddress($adminEmail);
+
+        // Content
+        $mail->isHTML(true);
+        $mail->Subject = 'Thông báo đơn hàng mới - ' . $maVanDon;
+        
+        // Email body with enhanced styling
+        $body = "
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 800px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }
+                .header {
+                    background-color: #ff5722;
+                    color: white;
+                    padding: 20px;
+                    text-align: center;
+                    border-radius: 5px 5px 0 0;
+                }
+                .content {
+                    background-color: #ffffff;
+                    padding: 20px;
+                    border: 1px solid #ddd;
+                    border-radius: 0 0 5px 5px;
+                }
+                .section {
+                    margin-bottom: 20px;
+                    padding: 15px;
+                    background-color: #f9f9f9;
+                    border-radius: 5px;
+                }
+                .section-title {
+                    color: #ff5722;
+                    border-bottom: 2px solid #ff5722;
+                    padding-bottom: 5px;
+                    margin-bottom: 15px;
+                }
+                .info-row {
+                    margin-bottom: 10px;
+                }
+                .label {
+                    font-weight: bold;
+                    color: #666;
+                }
+                .value {
+                    color: #333;
+                }
+                .order-id {
+                    font-size: 1.2em;
+                    color: #ff5722;
+                    font-weight: bold;
+                }
+                .footer {
+                    text-align: center;
+                    margin-top: 20px;
+                    padding-top: 20px;
+                    border-top: 1px solid #ddd;
+                    color: #666;
+                }
+            </style>
+        </head>
+        <body>
+            <div class='header'>
+                <h1>Thông báo đơn hàng mới</h1>
+            </div>
+            <div class='content'>
+                <div class='section'>
+                    <div class='info-row'>
+                        <span class='label'>Mã vận đơn:</span>
+                        <span class='value order-id'>{$maVanDon}</span>
+                    </div>
+                    <div class='info-row'>
+                        <span class='label'>Ngày tạo:</span>
+                        <span class='value'>{$created_at}</span>
+                    </div>
+                </div>
+
+                <div class='section'>
+                    <h3 class='section-title'>Thông tin người gửi</h3>
+                    <div class='info-row'>
+                        <span class='label'>Tên:</span>
+                        <span class='value'>{$sender_name}</span>
+                    </div>
+                    <div class='info-row'>
+                        <span class='label'>Số điện thoại:</span>
+                        <span class='value'>{$sender_phone}</span>
+                    </div>
+                    <div class='info-row'>
+                        <span class='label'>Địa chỉ:</span>
+                        <span class='value'>{$sender_address}</span>
+                    </div>
+                </div>
+
+                <div class='section'>
+                    <h3 class='section-title'>Thông tin người nhận</h3>
+                    <div class='info-row'>
+                        <span class='label'>Tên:</span>
+                        <span class='value'>{$receiver_name}</span>
+                    </div>
+                    <div class='info-row'>
+                        <span class='label'>Số điện thoại:</span>
+                        <span class='value'>{$receiver_phone}</span>
+                    </div>
+                    <div class='info-row'>
+                        <span class='label'>Địa chỉ:</span>
+                        <span class='value'>{$receiver_address}</span>
+                    </div>
+                    <div class='info-row'>
+                        <span class='label'>Tỉnh/Thành phố:</span>
+                        <span class='value'>{$province}</span>
+                    </div>
+                    <div class='info-row'>
+                        <span class='label'>Quận/Huyện:</span>
+                        <span class='value'>{$district}</span>
+                    </div>
+                    <div class='info-row'>
+                        <span class='label'>Phường/Xã:</span>
+                        <span class='value'>{$ward}</span>
+                    </div>
+                </div>
+
+                <div class='section'>
+                    <h3 class='section-title'>Thông tin đơn hàng</h3>
+                    <div class='info-row'>
+                        <span class='label'>Hình thức gửi:</span>
+                        <span class='value'>{$shipping_option}</span>
+                    </div>
+                    <div class='info-row'>
+                        <span class='label'>Tổng khối lượng:</span>
+                        <span class='value'>{$total_weight} gram</span>
+                    </div>
+                    <div class='info-row'>
+                        <span class='label'>Giá trị hàng:</span>
+                        <span class='value'>{$product_value} VNĐ</span>
+                    </div>
+                    <div class='info-row'>
+                        <span class='label'>COD:</span>
+                        <span class='value'>{$COD} VNĐ</span>
+                    </div>
+                    <div class='info-row'>
+                        <span class='label'>Ghi chú:</span>
+                        <span class='value'>{$note}</span>
+                    </div>
+                </div>
+
+                <div class='footer'>
+                    <p>Đây là email tự động từ hệ thống FlybeeMove. Vui lòng không trả lời email này.</p>
+                    <p>© " . date('Y') . " FlybeeMove - Dịch vụ giao hàng chuyên nghiệp</p>
+                </div>
+            </div>
+        </body>
+        </html>";
+        
+        $mail->Body = $body;
+        $mail->AltBody = strip_tags($body);
+
+        $mail->send();
 
         header("Location: index.php?url=success-create-shipment&maVanDon=$maVanDon");
         exit;
@@ -125,7 +314,18 @@ if (isset($_POST['btnTaoDon'])) {
 
 ?>
 
-
+<div class="container-fluid p-0 mt-5">
+    <div class="row m-0">
+        <div class="col-lg p-0">
+            <div class="banner_gioiThieu">
+                <img src="./public/img/banner/1920px-Hong_Kong_Skyline_Panoram.jpg" alt="" class="w-100">
+                <div class="banner-overlay">
+                    <h4>Tạo đơn hàng</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 <div class="taodongiao">
     <div class="container py-4">
         <form action="" method="post">

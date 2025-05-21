@@ -1,11 +1,11 @@
 <?php
+ob_start();
 session_start();
 
-// Xóa toàn bộ session
-session_unset();
+// Hủy toàn bộ session
 session_destroy();
 
-// Chuyển hướng về trang đăng nhập hoặc trang chủ
-header("Location: index.php?url=login");
-exit();
+ob_end_clean();
+header('Location: /webgiaohang/index.php?url=login');
+exit;
 ?>

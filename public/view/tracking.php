@@ -1,5 +1,4 @@
 <?php
-session_start();
 require_once './config/conn.php';
 
 $tracking_result = null;
@@ -35,7 +34,7 @@ if (isset($_GET['tracking_number'])) {
         // Nếu tìm thấy đơn hàng, truy vấn lịch sử trạng thái
         if ($tracking_result) {
             $query = "
-                SELECT osh.mocThoiGian, os.tenTrangThai, osh.diaDiem, osh.HIMnotes
+                SELECT osh.mocThoiGian, os.tenTrangThai, osh.diaDiem, osh.HIMnotes,os.moTa
                 FROM lichsu_trangthai osh
                 JOIN trangthai os ON osh.id_trangThai = os.id_trangThai
                 WHERE osh.maVanDon = ?
@@ -61,10 +60,20 @@ if (isset($_GET['tracking_number'])) {
 <!-- Tracking Section -->
 
 <section class="py-5">
+    <div class="row m-0 mt-5">
+        <div class="col-lg p-0">
+            <div class="banner_gioiThieu">
+                <img src="./public/img/banner/1920px-Hong_Kong_Skyline_Panoram.jpg" alt="" class="w-100">
+                <div class="banner-overlay">
+                    <h4>Theo dõi vận đơn</h4>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-md-8">
-                <div class="card shadow-sm border-0">
+                <div class="card shadow-sm border-0 mt-5">
                     <div class="card-body p-5">
                         <h2 class="text-center mb-4">Tra cứu vận đơn</h2>
 
@@ -144,13 +153,13 @@ if (isset($_GET['tracking_number'])) {
                                                 $iconClass = 'fa-box';
                                                 $bgClass = 'bg-info';
 
-                                                if (stripos($history['tenTrangThai'], 'giao') !== false) {
+                                                if (stripos($history['tenTrangThai'], 'Đang giao') !== false) {
                                                     $iconClass = 'fa-truck';
                                                     $bgClass = 'bg-primary';
-                                                } elseif (stripos($history['tenTrangThai'], 'thành công') !== false || stripos($history['tenTrangThai'], 'hoàn thành') !== false) {
+                                                } elseif (stripos($history['tenTrangThai'], 'Đã giao') !== false || stripos($history['tenTrangThai'], 'hoàn thành') !== false) {
                                                     $iconClass = 'fa-check';
                                                     $bgClass = 'bg-success';
-                                                } elseif (stripos($history['tenTrangThai'], 'hủy') !== false) {
+                                                } elseif (stripos($history['tenTrangThai'], 'Giao không thành công') !== false) {
                                                     $iconClass = 'fa-times';
                                                     $bgClass = 'bg-danger';
                                                 }
@@ -161,8 +170,8 @@ if (isset($_GET['tracking_number'])) {
                                                 <div class="timeline-content">
                                                     <h5><?php echo htmlspecialchars($history['tenTrangThai']); ?></h5>
                                                     <p class="text-muted"><?php echo date('d/m/Y H:i', strtotime($history['mocThoiGian'])); ?></p>
-                                                    <?php if (!empty($history['HIMnotes'])): ?>
-                                                        <p><strong>Ghi chú:</strong> <?php echo htmlspecialchars($history['HIMnotes']); ?></p>
+                                                    <?php if (!empty($history['moTa'])): ?>
+                                                        <p><strong>Mô tả: </strong> <?php echo htmlspecialchars($history['moTa']); ?></p>
                                                     <?php endif; ?>
                                                 </div>
                                             </div>

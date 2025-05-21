@@ -1,6 +1,8 @@
 <?php
 require_once './config/conn.php';
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 $error = '';
 $success = '';
@@ -23,11 +25,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if ($user) {
                 // So sánh mật khẩu đã mã hóa
                 if (password_verify($password, $user['password'])) {
-                    // Lưu thông tin người dùng vào session
-                    $_SESSION['user_id'] = $user['id_khachHang'];
+                    // Lưu session
+                    $_SESSION['id_khach'] = $user['id_khachHang'];
                     $_SESSION['email'] = $email;
                     $_SESSION['username'] = $user['tenKhachHang'];
 
+                    // Đảm bảo không có output trước khi redirect
+                    ob_clean();
                     header("Location: index.php?url=trangchu");
                     exit();
                 } else {
@@ -79,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                     <div class="text-center mt-4">
                         <p class="mb-0">Bạn chưa có tài khoản? <a href="index.php?url=register" class="text-primary">Đăng ký</a></p>
-                        <a href="#" class="text-muted">Quên mật khẩu</a>
+                        <a href="index.php?url=forgot_password" class="text-muted">Quên mật khẩu</a>
                     </div>
                 </div>
             </div>

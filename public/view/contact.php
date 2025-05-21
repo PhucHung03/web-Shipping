@@ -1,5 +1,8 @@
 <?php
 require_once './config/conn.php';
+require 'vendor/autoload.php'; // Thêm dòng này để load PHPMailer
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 error_reporting(1);
 session_start();
 
@@ -19,21 +22,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error_message = 'Vui lòng nhập địa chỉ email hợp lệ.';
     } else {
         try {
-            $stmt = $conn->prepare("INSERT INTO contact_messages (name, email, subject, message, created_at) VALUES (?, ?, ?, ?, NOW())");
+            $stmt = $conn->prepare("INSERT INTO lienhe (ten, email, chuDe, tinNhan, ngayGui) VALUES (?, ?, ?, ?, NOW())");
             $stmt->bind_param("ssss", $name, $email, $subject, $message);
             $result = $stmt->execute();
 
             if ($result) {
                 $success_message = 'Cảm ơn bạn đã gửi tin nhắn. Chúng tôi sẽ liên hệ lại với bạn sớm!';
 
-                // Gửi email thông báo cho quản trị viên
-                $to = "admin@shipping.com";
-                $headers = "From: " . $email . "\r\n";
-                $headers .= "Reply-To: " . $email . "\r\n";
-                $headers .= "X-Mailer: PHP/" . phpversion();
-                $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+                // Gửi email thông báo cho quản trị viên sử dụng PHPMailer
+                $mail = new PHPMailer(true);
+                try {
+                    // Cấu hình server
+                    $mail->isSMTP();
+                    $mail->Host = 'smtp.gmail.com'; // Thay đổi SMTP server của bạn
+                    $mail->SMTPAuth = true;
+                    $mail->Username = 'hoanglit652003@gmail.com'; // Email của bạn
+                    $mail->Password = 'nhefbuicsvrrtnlz'; // Mật khẩu ứng dụng
+                    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                    $mail->Port = 587;
+                    $mail->CharSet = 'UTF-8';
 
-                mail($to, "Tin nhắn liên hệ mới: " . $subject, $message, $headers);
+                    // Người gửi và người nhận
+                    $mail->setFrom($email, $name);
+                    $mail->addAddress('hoanglit652003@gmail.com', 'Admin');
+                    $mail->addReplyTo($email, $name);
+
+                    // Nội dung email
+                    $mail->isHTML(true);
+                    $mail->Subject = "Tin nhắn liên hệ mới: " . $subject;
+                    $mail->Body = "<div style='font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;'>
+                        <div style='background: linear-gradient(135deg, #FF6B35 0%, #FF8C42 100%); padding: 25px; text-align: center; border-radius: 8px 8px 0 0;'>
+                            <h2 style='color: white; margin: 0; font-size: 24px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);'>Thông Báo Liên Hệ Mới</h2>
+                        </div>
+                        
+                        <div style='padding: 25px; border: 1px solid #FFE4D6; border-radius: 0 0 8px 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>
+                            <p style='font-size: 16px; color: #333; margin-bottom: 20px;'>Kính gửi Admin,</p>
+                            
+                            <p style='font-size: 16px; color: #333; margin-bottom: 20px;'>Bạn có một tin nhắn liên hệ mới từ khách hàng:</p>
+                            
+                            <div style='background-color: #FFF5F0; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #FF6B35;'>
+                                <p style='margin: 8px 0;'><strong style='color: #FF6B35;'>Họ và tên:</strong> $name</p>
+                                <p style='margin: 8px 0;'><strong style='color: #FF6B35;'>Email:</strong> $email</p>
+                                <p style='margin: 8px 0;'><strong style='color: #FF6B35;'>Tiêu đề:</strong> $subject</p>
+                            </div>
+                            
+                            <p style='font-size: 16px; color: #333; margin: 20px 0 10px;'><strong>Nội dung tin nhắn:</strong></p>
+                            <div style='background-color: #FFF5F0; padding: 20px; border-radius: 8px; border-left: 4px solid #FF6B35; margin: 10px 0 20px;'>
+                                <p style='margin: 0; color: #444; line-height: 1.8;'>$message</p>
+                            </div>
+                            
+                            <div style='margin-top: 30px; padding-top: 20px; border-top: 2px solid #FFE4D6;'>
+                                <p style='margin: 5px 0; color: #666;'>Trân trọng,</p>
+                                <p style='margin: 5px 0; color: #FF6B35; font-weight: bold; font-size: 18px;'>🚚 CÔNG TY FLYBEEMOVE CHUYỂN PHÁT NHANH TOÀN QUỐC</p>
+                            </div>
+                        </div>
+                    </div>";
+
+                    $mail->send();
+                } catch (Exception $e) {
+                    // Log lỗi gửi email nhưng không hiển thị cho người dùng
+                    error_log("Lỗi gửi email: " . $mail->ErrorInfo);
+                }
             } else {
                 $error_message = 'Xin lỗi, đã xảy ra lỗi khi gửi tin nhắn. Vui lòng thử lại sau.';
             }

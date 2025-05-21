@@ -22,38 +22,68 @@ session_start();
 <body>
     <!-- Navigation -->
     <div class="danhMuc">
+        <div class="layout-header">
+            <div class="layout_left">
+                <a href=""><i class="fas fa-phone-alt"></i> 0123123123</a>
+                <p><i class="fas fa-store"></i> Cửa hàng Flybee toàn quốc</p>
+            </div>
+            <div class="layout_right">
+                <a href="index.php?url=gioiThieu">Về Flybee</a>
+            </div>
+
+        </div>
         <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
             <div class="container">
                 <a class="navbar-brand" href="index.php">
-                    <img src="./public/img/logo flybee.png" alt="Logo" height="40">
+                    <img src="./public/img/logo flybee.png" alt="Logo" height="40" style="padding-bottom: 3px;">
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="navbarNav">
-                    <ul class="navbar-nav me-auto">
+                    <ul class="navbar-nav me-auto" style="margin-left: 200px;">
                         <li class="nav-item">
                             <a class="nav-link" href="index.php?url=trangchu">Trang chủ</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="index.php?url=tracking">Theo dõi vận đơn</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link " href="">
+                                Giới thiệu
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                <li><a class="dropdown-item" href="index.php?url=gioiThieu">Về chúng tôi</a></li>
+                                <li><a class="dropdown-item" href="#">Cam kết</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link" href="">
+                                Dịch vụ
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                <li><a class="dropdown-item" href="index.php?url=tracking">Theo dõi vận đơn</a></li>
+                                <li><a class="dropdown-item" href="index.php?url=create-shipment">Tạo đơn giao Hàng</a></li>
+                            </ul>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="index.php?url=create-shipment">Giao Hàng</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="index.php?url=manager-shipment">Quản lí đơn hàng</a>
+                            <a class="nav-link" href="index.php?url=manager-shipment">Quản lý đơn hàng</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="index.php?url=contact">Liên Hệ</a>
                         </li>
                     </ul>
                     <div class="d-flex">
-                        <?php if (isset($_SESSION['user_id'])): ?>
-                            <a href="index.php?url=profile" class="btn btn-outline-primary me-2">
-                                <i class="fas fa-user"></i> <?php echo $_SESSION['username']; ?>
-                            </a>
-                            <a href="index.php?url=logout" class="btn btn-outline-danger">Đăng xuất</a>
+                        <?php if (isset($_SESSION['id_khach'])): ?>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-primary dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-user"></i> <?php echo $_SESSION['username']; ?>
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="userDropdown">
+                                    <li><a class="dropdown-item" href="index.php?url=profile">Thông tin cá nhân</a></li>
+                                    <li>
+                                        <hr class="dropdown-divider">
+                                    </li>
+                                    <li><a class="dropdown-item text-danger" href="./public/view/logout.php">Đăng xuất</a></li>
+                                </ul>
+                            </div>
                         <?php else: ?>
                             <a href="index.php?url=login" class="btn btn-outline-primary me-2">Đăng nhập</a>
                             <a href="index.php?url=register" class="btn btn-primary">Đăng kí</a>

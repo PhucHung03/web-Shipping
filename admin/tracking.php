@@ -3,7 +3,7 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-require 'db.php';
+require '../config/conn.php';
 require 'header.php';
 
 // Hàm tính khoảng cách giữa 2 toạ độ GPS (Haversine)
@@ -26,7 +26,7 @@ function calculateDistance($lat1, $lng1, $lat2, $lng2) {
 }
 
 // Lấy danh sách toàn bộ nhân viên giao hàng
-$sqlStaff = "SELECT Id_nhanVien, tenNhanVien, viTriLat, viTriLng FROM NhanVien WHERE viTri = 'Giao hàng'";
+$sqlStaff = "SELECT id_nhanVien, tenNhanVien, viTriLat, viTriLng FROM nhanvien WHERE viTri = 'Giao hàng'";
 $resultStaff = $mysqli->query($sqlStaff);
 
 // Xử lý lọc theo bán kính
@@ -56,16 +56,20 @@ $selectedStaff = null;
 $orders = [];
 if (isset($_GET['staff_id'])) {
     $sid = (int)$_GET['staff_id'];
-    $infoStmt = $mysqli->prepare("SELECT tenNhanVien, viTriLat, viTriLng FROM NhanVien WHERE Id_nhanVien=?");
+    $infoStmt = $mysqli->prepare("SELECT tenNhanVien, viTriLat, viTriLng FROM nhanvien WHERE id_nhanVien=?");
     $infoStmt->bind_param('i', $sid);
     $infoStmt->execute();
     $selectedStaff = $infoStmt->get_result()->fetch_assoc();
 
     $orderStmt = $mysqli->prepare(
-        "SELECT D.maVanDon, N.tenNguoiNhan, N.diaChi AS diaChiNhan, D.ngayGiao, D.trangThaiDonHang
-         FROM DonHang D
-         JOIN NguoiNhan N ON D.id_nguoiNhan = N.Id_NguoiNhan
-         WHERE D.id_nhanVien=? AND D.trangThaiDonHang='Đang giao'"
+        "SELECT D.maVanDon, N.tenNguoiNhan, DC.diaChiNguoiNhan AS diaChiNhan, 
+                D.ngayGiao, T.tenTrangThai as trangThaiDonHang,
+                D.ngayTaoDon, T.id_trangThai
+         FROM donhang D
+         JOIN nguoinhan N ON D.id_nguoiNhan = N.id_nguoiNhan
+         JOIN diachi DC ON N.id_diaChi = DC.id_diaChi
+         JOIN trangthai T ON D.id_trangThai = T.id_trangThai
+         WHERE D.id_nhanVien=? AND T.tenTrangThai IN ('Đang xử lý', 'Đang giao')"
     );
     $orderStmt->bind_param('i', $sid);
     $orderStmt->execute();
@@ -80,218 +84,8 @@ if (isset($_GET['staff_id'])) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <style>
-    .content-container { 
-      max-width: 1200px; 
-      margin: 2rem auto; 
-      padding: 1.5rem; 
-      background: #fff; 
-      border-radius: 10px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
-      min-height: 85vh; 
-    }
-    h2 { 
-      color: #2c3e50; 
-      font-size: 1.75rem; 
-      margin-bottom: 1rem; 
-    }
-    /* Improved map container */
-    #filterMap { 
-      height: 350px; 
-      width: 100%; 
-      margin-bottom: 1.5rem; 
-      border: 1px solid #ddd; 
-      border-radius: 6px; 
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      z-index: 1; /* Ensure proper stacking */
-    }
-    .controls { 
-      display: flex; 
-      flex-wrap: wrap;
-      gap: 1rem; 
-      margin-bottom: 1.5rem; 
-      align-items: center; 
-      background: #f8f9fa;
-      padding: 1rem;
-      border-radius: 8px;
-    }
-    .controls label { 
-      font-size: 1rem; 
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .controls input[type="range"] {
-      width: 150px;
-      cursor: pointer;
-    }
-    table { 
-      width: 100%; 
-      border-collapse: collapse; 
-      margin-bottom: 1.5rem; 
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
-    th, td { 
-      padding: 0.75rem 1rem; 
-      text-align: left; 
-    }
-    th { 
-      background: #0dcaf0; 
-      color: #ecf0f1; 
-    }
-    tr:nth-child(even) { 
-      background: #f9f9f9; 
-    }
-    tr:hover {
-      background: #f0f4f8;
-      transition: background 0.3s;
-    }
-    .btn { 
-      display: inline-block; 
-      margin: 0.5rem 0; 
-      padding: 0.5rem 1rem; 
-      background: #ff5722;
-      color: #fff; 
-      border-radius: 6px; 
-      text-decoration: none; 
-      transition: background 0.3s, transform 0.2s; 
-      cursor: pointer; 
-      border: none; 
-      font-weight: 600;
-    }
-    .btn:hover { 
-      background: #0dcaf0; 
-      transform: translateY(-2px);
-    }
-    .btn:active {
-      transform: translateY(0);
-    }
-    .notification { 
-      padding: 1rem; 
-      text-align: center; 
-      color: #e67e22; 
-      background: #fff8f0;
-      border-radius: 6px;
-      margin-bottom: 1rem;
-    }
-    .detail-section { 
-      margin-top: 2rem; 
-      background: #f8f9fa;
-      padding: 1.5rem;
-      border-radius: 8px;
-    }
-    .detail-section h3 {
-      color: #2c3e50;
-      font-size: 1.4rem;
-      margin-bottom: 1rem;
-      padding-bottom: 0.5rem;
-    }
-    /* Fixed map iframe */
-    iframe.map-frame { 
-      width: 100%; 
-      height: 400px; 
-      border: none; 
-      border-radius: 8px; 
-      margin-bottom: 1.5rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    /* Modal */
-    .modal { 
-      display: none; 
-      position: fixed; 
-      z-index: 1000; 
-      left: 0; 
-      top: 0; 
-      width: 100%; 
-      height: 100%; 
-      background: rgba(0,0,0,0.5); 
-      overflow: auto; 
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-    .modal.show {
-      opacity: 1;
-    }
-    .modal-content { 
-      background: #fff; 
-      margin: 10% auto; 
-      padding: 1.5rem; 
-      border-radius: 8px; 
-      max-width: 500px; 
-      position: relative; 
-      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-      transform: translateY(-20px);
-      transition: transform 0.3s;
-    }
-    .modal.show .modal-content {
-      transform: translateY(0);
-    }
-    .modal .close { 
-      position: absolute; 
-      top: 0.5rem; 
-      right: 1rem; 
-      font-size: 1.5rem; 
-      cursor: pointer; 
-      color: #aaa; 
-      transition: color 0.3s;
-    }
-    .modal .close:hover { 
-      color: #000; 
-    }
-    .modal-header { 
-      font-size: 1.25rem; 
-      margin-bottom: 1rem; 
-      color: #2c3e50; 
-      padding-bottom: 0.5rem;
-    }
-    .modal-body ul { 
-      list-style: none; 
-      padding: 0; 
-    }
-    .modal-body li { 
-      margin: 0.75rem 0;
-      padding: 0.5rem;
-      border-bottom: 1px solid #eee;
-    }
-    .modal-body li:last-child {
-      border-bottom: none;
-    }
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-      .content-container {
-        padding: 1rem;
-        margin: 1rem;
-      }
-      #filterMap {
-        height: 250px;
-      }
-      .controls {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      iframe.map-frame {
-        height: 300px;
-      }
-      .modal-content {
-        width: 90%;
-        margin: 20% auto;
-      }
-      th, td {
-        padding: 0.5rem;
-      }
-    }
-    /* Leaflet control styles */
-    .leaflet-touch .leaflet-control-layers, 
-    .leaflet-touch .leaflet-bar {
-      border: 2px solid rgba(0,0,0,0.2);
-      border-radius: 4px;
-    }
-    .leaflet-control-zoom a {
-      transition: background-color 0.3s;
-    }
-  </style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+  <link rel="stylesheet" href="./css/tracking.css">
 </head>
 <body>
   <div class="content-container">
@@ -316,7 +110,7 @@ if (isset($_GET['staff_id'])) {
             <td><?= htmlspecialchars($st['tenNhanVien']) ?></td>
             <td><?= $st['viTriLat'] ?></td>
             <td><?= $st['viTriLng'] ?></td>
-            <td><a class="btn" href="?staff_id=<?= $st['Id_nhanVien'] ?>&lat=<?= urlencode($latCenter) ?>&lng=<?= urlencode($lngCenter) ?>&radius=<?= urlencode($radius) ?>">Xem tiến độ</a></td>
+            <td><a class="btn" href="?staff_id=<?= $st['id_nhanVien'] ?>&lat=<?= urlencode($latCenter) ?>&lng=<?= urlencode($lngCenter) ?>&radius=<?= urlencode($radius) ?>">Xem tiến độ</a></td>
           </tr>
         <?php endforeach; ?>
         </tbody>
@@ -336,15 +130,27 @@ if (isset($_GET['staff_id'])) {
             <div class="notification">Không có đơn hàng đang giao</div>
           <?php else: ?>
             <table>
-              <thead><tr><th>Mã đơn</th><th>Người nhận</th><th>Địa chỉ</th><th>Ngày giao</th><th>Thao tác</th></tr></thead>
+              <thead><tr><th>Mã đơn</th><th>Người nhận</th><th>Địa chỉ</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
               <tbody>
               <?php foreach ($orders as $o): ?>
                 <tr>
                   <td><?= htmlspecialchars($o['maVanDon']) ?></td>
                   <td><?= htmlspecialchars($o['tenNguoiNhan']) ?></td>
                   <td><?= htmlspecialchars($o['diaChiNhan']) ?></td>
-                  <td><?= date('d/m/Y', strtotime($o['ngayGiao'])) ?></td>
-                  <td><button class="btn view-order" data-ma="<?= htmlspecialchars($o['maVanDon']) ?>" data-recipient="<?= htmlspecialchars($o['tenNguoiNhan']) ?>" data-address="<?= htmlspecialchars($o['diaChiNhan']) ?>" data-date="<?= htmlspecialchars(date('d/m/Y', strtotime($o['ngayGiao']))) ?>" data-status="<?= htmlspecialchars($o['trangThaiDonHang']) ?>">Xem</button></td>
+                  <td>
+                    <?php if ($o['id_trangThai'] == 2): // Đang xử lý ?>
+                      Đang xử lý
+                    <?php elseif ($o['id_trangThai'] == 3): // Đang giao ?>
+                      <?= $o['ngayGiao'] ? date('d/m/Y', strtotime($o['ngayGiao'])) : 'Đang giao' ?>
+                    <?php endif; ?>
+                  </td>
+                  <td><button class="btn view-order" 
+                      data-ma="<?= htmlspecialchars($o['maVanDon']) ?>" 
+                      data-recipient="<?= htmlspecialchars($o['tenNguoiNhan']) ?>" 
+                      data-address="<?= htmlspecialchars($o['diaChiNhan']) ?>" 
+                      data-date="<?= $o['ngayGiao'] ? htmlspecialchars(date('d/m/Y', strtotime($o['ngayGiao']))) : 'Chưa có ngày giao' ?>" 
+                      data-status="<?= htmlspecialchars($o['trangThaiDonHang']) ?>"
+                      data-created="<?= htmlspecialchars(date('d/m/Y', strtotime($o['ngayTaoDon']))) ?>">Xem</button></td>
                 </tr>
               <?php endforeach; ?>
               </tbody>
@@ -366,6 +172,7 @@ if (isset($_GET['staff_id'])) {
 
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
   
 
 <script>
@@ -405,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const m = L.marker([+st.viTriLat, +st.viTriLng], { icon: empIcon })
         .addTo(map)
         .bindPopup(`<b>${st.tenNhanVien}</b><br>Lat: ${(+st.viTriLat).toFixed(5)}<br>Lng: ${(+st.viTriLng).toFixed(5)}`);
-      staffMarkers[st.Id_nhanVien] = m;
+      staffMarkers[st.id_nhanVien] = m;
     }
   });
 
@@ -477,15 +284,112 @@ document.addEventListener('DOMContentLoaded', () => {
   socket.addEventListener('message', evt => {
     try {
       const data = JSON.parse(evt.data);
-      // data = { staffId, lat, lng, timestamp }
-      const m = staffMarkers[data.staffId];
+      console.log('Received WebSocket data:', data); // Debug log
+      
+      // Ensure data has required fields
+      if (!data.staffId || !data.lat || !data.lng) {
+        console.error('Invalid data format:', data);
+        return;
+      }
+
+      // Convert to numbers
+      const staffId = parseInt(data.staffId);
+      const lat = parseFloat(data.lat);
+      const lng = parseFloat(data.lng);
+
+      // Update marker position
+      const m = staffMarkers[staffId];
       if (m) {
-        m.setLatLng([data.lat, data.lng]);
+        console.log(`Updating marker for staff ${staffId} to lat: ${lat}, lng: ${lng}`);
+        
+        // Update marker position
+        m.setLatLng([lat, lng]);
+        
+        // Update popup content with new coordinates
+        const staffName = staffData.find(s => s.id_nhanVien == staffId)?.tenNhanVien || 'Unknown';
+        m.setPopupContent(`<b>${staffName}</b><br>Lat: ${lat.toFixed(5)}<br>Lng: ${lng.toFixed(5)}`);
+        
+        // Save new location to database
+        console.log('Sending update request with data:', {id: staffId, lat: lat, lng: lng}); // Debug log
+        
+        // Create FormData object
+        const formData = new FormData();
+        formData.append('id', staffId);
+        formData.append('lat', lat);
+        formData.append('lng', lng);
+
+        fetch('update_location.php', {
+          method: 'POST',
+          body: formData
+        })
+        .then(response => {
+          console.log('Response status:', response.status); // Debug log
+          return response.json();
+        })
+        .then(result => {
+          console.log('Update result:', result); // Debug log
+          if (!result.success) {
+            console.error('Failed to update location:', result.message);
+          } else {
+            // Update staffData array with new coordinates
+            const staffIndex = staffData.findIndex(s => s.id_nhanVien == staffId);
+            if (staffIndex !== -1) {
+              staffData[staffIndex].viTriLat = lat;
+              staffData[staffIndex].viTriLng = lng;
+              console.log('Updated staffData:', staffData[staffIndex]);
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Error updating location:', error);
+        });
+      } else {
+        console.warn(`No marker found for staff ID: ${staffId}`);
       }
     } catch (err) {
-      console.error('Invalid WS data', err);
+      console.error('Invalid WS data:', err, 'Raw data:', evt.data);
     }
   });
+
+  // Function to update staff markers
+  function updateStaffMarkers() {
+    staffData.forEach(st => {
+      if (st.viTriLat && st.viTriLng) {
+        const lat = parseFloat(st.viTriLat);
+        const lng = parseFloat(st.viTriLng);
+        
+        if (staffMarkers[st.id_nhanVien]) {
+          // Update existing marker
+          staffMarkers[st.id_nhanVien].setLatLng([lat, lng]);
+          staffMarkers[st.id_nhanVien].setPopupContent(
+            `<b>${st.tenNhanVien}</b><br>Lat: ${lat.toFixed(5)}<br>Lng: ${lng.toFixed(5)}`
+          );
+        } else {
+          // Create new marker
+          const m = L.marker([lat, lng], { icon: empIcon })
+            .addTo(map)
+            .bindPopup(`<b>${st.tenNhanVien}</b><br>Lat: ${lat.toFixed(5)}<br>Lng: ${lng.toFixed(5)}`);
+          staffMarkers[st.id_nhanVien] = m;
+        }
+      }
+    });
+  }
+
+  // Initial markers setup
+  updateStaffMarkers();
+
+  // Add periodic refresh of staff data
+  setInterval(() => {
+    fetch('get_staff_locations.php')
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          staffData = data.staff;
+          updateStaffMarkers();
+        }
+      })
+      .catch(error => console.error('Error refreshing staff data:', error));
+  }, 5000); // Refresh every 5 seconds
 
   // === Modal chi tiết đơn hàng ===
   // Modal handling with animations
@@ -511,7 +415,6 @@ document.addEventListener('DOMContentLoaded', () => {
               <li><strong>Mã đơn:</strong> ${this.dataset.ma}</li>
               <li><strong>Người nhận:</strong> ${this.dataset.recipient}</li>
               <li><strong>Địa chỉ:</strong> ${this.dataset.address}</li>
-              <li><strong>Ngày giao:</strong> ${this.dataset.date}</li>
               <li><strong>Trạng thái:</strong> ${this.dataset.status}</li>
             </ul>
           `;
