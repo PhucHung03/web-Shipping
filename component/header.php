@@ -46,19 +46,19 @@ session_start();
                             <a class="nav-link" href="index.php?url=trangchu">Trang chủ</a>
                         </li>
                         <li class="nav-item dropdown">
-                            <a class="nav-link " href="">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDarkDropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 Giới thiệu
                             </a>
-                            <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="navbarDarkDropdownMenuLink">
                                 <li><a class="dropdown-item" href="index.php?url=gioiThieu">Về chúng tôi</a></li>
                                 <li><a class="dropdown-item" href="#">Cam kết</a></li>
                             </ul>
                         </li>
                         <li class="nav-item dropdown">
-                            <a class="nav-link" href="">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDarkDropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 Dịch vụ
                             </a>
-                            <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="navbarDarkDropdownMenuLink">
                                 <li><a class="dropdown-item" href="index.php?url=tracking">Theo dõi vận đơn</a></li>
                                 <li><a class="dropdown-item" href="index.php?url=create-shipment">Tạo đơn giao Hàng</a></li>
                             </ul>

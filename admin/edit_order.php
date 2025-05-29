@@ -472,8 +472,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="info-row">
                         <label>Người trả phí:</label>
                         <select name="benTraPhi" required>
-                            <option value="1" <?= $order['benTraPhi'] == 1 ? 'selected' : '' ?>>Người nhận trả phí</option>
-                            <option value="0" <?= $order['benTraPhi'] == 0 ? 'selected' : '' ?>>Người gửi trả phí</option>
+                            <option value="Người nhận trả phí" <?= $order['benTraPhi'] == 1 ? 'selected' : '' ?>>Người nhận trả phí</option>
+                            <option value="Người gửi trả phí" <?= $order['benTraPhi'] == 0 ? 'selected' : '' ?>>Người gửi trả phí</option>
                         </select>
                     </div>
                 </div>

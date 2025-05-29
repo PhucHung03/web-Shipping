@@ -10,7 +10,7 @@
             const provinceSelect = document.getElementById("provinceSelect");
             data.forEach(p => {
                 let option = document.createElement("option");
-                option.value = p.name; // 🔁 lưu TÊN thay vì CODE
+                option.value = p.name; // lưu TÊN thay vì mã 
                 option.text = p.name;
                 provinceSelect.appendChild(option);
             });
@@ -25,7 +25,7 @@
 
         if (!provinceCode) return;
 
-        // Vì chúng ta dùng name, cần tìm lại code từ tên
+        //  tìm lại code từ tên
         fetch(`https://provinces.open-api.vn/api/p/`)
             .then(res => res.json())
             .then(provinces => {
@@ -64,7 +64,7 @@
                     .then(data => {
                         data.wards.forEach(w => {
                             let option = document.createElement("option");
-                            option.value = w.name; // ✅ lưu tên
+                            option.value = w.name; // lưu tên
                             option.text = w.name;
                             wardSelect.appendChild(option);
                         });
@@ -74,6 +74,7 @@
 </script>
 
 
+<!-- them san pham -->
 <script>
     let productIndex = 1;
 
@@ -264,6 +265,5 @@ window.addEventListener("DOMContentLoaded", function () {
             });
         }
 </script>
-
 
 

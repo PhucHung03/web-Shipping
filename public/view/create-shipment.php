@@ -1,11 +1,14 @@
 <?php
+ob_start();
 require_once './config/conn.php';
 require_once __DIR__ . '/../../admin/vendor/autoload.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Check if user is logged in
 if (!isset($_SESSION['id_khach'])) {
@@ -18,14 +21,45 @@ if (isset($_POST['btnTaoDon'])) {
     $maVanDon = "DGH" . date("YmdHis");
     $created_at = date('Y-m-d H:i:s');
     $id_khachhang = $_SESSION['id_khach'];
+    
+    // Validate phone numbers
+    $sender_phone = $_POST['sender_phone'];
+    $receiver_phone = $_POST['receiver_phone'];
+    
+    // Phone number validation function
+    function isValidPhoneNumber($phone) {
+        // Remove any spaces or special characters
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+        
+        // Check if phone number is 10 digits and starts with valid prefix
+        if (strlen($phone) !== 10) {
+            return false;
+        }
+        
+        $validPrefixes = ['03', '05', '01', '09', '07','08'];
+        $prefix = substr($phone, 0, 2);
+        
+        return in_array($prefix, $validPrefixes);
+    }
+    
+    // Validate sender phone
+    if (!isValidPhoneNumber($sender_phone)) {
+        echo "<script>alert('Số điện thoại người gửi không hợp lệ. Vui lòng nhập số điện thoại 10 số bắt đầu bằng 03, 05, 01, 09, 07');</script>";
+        exit();
+    }
+    
+    // Validate receiver phone
+    if (!isValidPhoneNumber($receiver_phone)) {
+        echo "<script>alert('Số điện thoại người nhận không hợp lệ. Vui lòng nhập số điện thoại 10 số bắt đầu bằng 03, 05, 01, 09, 07');</script>";
+        exit();
+    }
+    
     // Người gửi
     $sender_name = $_POST['sender_name'];
-    $sender_phone = $_POST['sender_phone'];
     $sender_address = $_POST['sender_address'];
 
     // Người nhận
     $receiver_name = $_POST['receiver_name'];
-    $receiver_phone = $_POST['receiver_phone'];
     $receiver_address = $_POST['receiver_address'];
     $province = $_POST['provinceSelect'];
     $district = $_POST['districtSelect'];
@@ -348,7 +382,8 @@ if (isset($_POST['btnTaoDon'])) {
                                         <!-- Số điện thoại -->
                                         <div class="col-md-6 mb-3">
                                             <label class="form-label">Số điện thoại <span class="text-danger">*</span></label>
-                                            <input type="text" class="form-control" placeholder="Số điện thoại người gửi" id="sender_phone" name="sender_phone" required> 
+                                            <input type="text" class="form-control" placeholder="Số điện thoại người gửi" id="sender_phone" name="sender_phone" required>
+                                            <div id="sender_phone_error" class="text-danger" style="display: none; font-size: 0.875rem; margin-top: 0.25rem;">Số điện thoại không hợp lệ</div>
                                         </div>
                                     </div>
                                 </div>
@@ -396,6 +431,7 @@ if (isset($_POST['btnTaoDon'])) {
                                         <label class="form-label">Số điện thoại <span class="text-danger">*</span></label>
                                         <div class="position-relative">
                                             <input type="text" class="form-control" placeholder="Số điện thoại người nhận" id="receiver_phone" name="receiver_phone" required>
+                                            <div id="receiver_phone_error" class="text-danger" style="display: none; font-size: 0.875rem; margin-top: 0.25rem;">Số điện thoại không hợp lệ</div>
                                         </div>
                                     </div>
                                 </div>
@@ -477,6 +513,9 @@ if (isset($_POST['btnTaoDon'])) {
                                             <div class="form-field">
                                                 <label class="required">KL (gram)</label>
                                                 <input type="number" class="form-control" id="total-weight" name="total-weight" required>
+                                                <div id="weight_error" class="text-danger" style="display: none; font-size: 0.875rem; margin-top: 0.25rem;">
+                                                    Khối lượng đơn hàng phải lớn hơn hoặc bằng tổng khối lượng sản phẩm
+                                                </div>
                                             </div>
                                             <div class="form-field">
                                                 <label class="required">Dài (cm)</label>
@@ -495,10 +534,16 @@ if (isset($_POST['btnTaoDon'])) {
                                             <div class="product-value">
                                                 <label class="required">Giá trị hàng hóa</label>
                                                 <input type="text" class="form-control" id="product-value" name="product-value">
+                                                <div id="product_value_error" class="text-danger" style="display: none; font-size: 0.875rem; margin-top: 0.25rem;">
+                                                    Giá trị hàng hóa phải từ 1.000 VND đến 50.000.000 VND
+                                                </div>
                                             </div>
                                             <div class="COD">
                                                 <label class="required">Tổng tiền thu hộ(COD)</label>
                                                 <input type="text" class="form-control" id="COD" name="COD">
+                                                <div id="cod_error" class="text-danger" style="display: none; font-size: 0.875rem; margin-top: 0.25rem;">
+                                                    Giá trị COD phải từ 1.000 VND đến 50.000.000 VND
+                                                </div>
                                             </div>
                                             <div class="product-value">
                                             </div>
@@ -562,3 +607,161 @@ if (isset($_POST['btnTaoDon'])) {
         </form>
     </div>
 </div>
+
+<script>
+// Tất cả các hàm validation
+const Validation = {
+    // Kiểm tra số điện thoại
+    validatePhone: function(input, errorId) {
+        // Chỉ cho phép nhập số
+        let value = input.value.replace(/[^\d]/g, '');
+        input.value = value;
+        
+        // Kiểm tra độ dài và prefix
+        let isValid = false;
+        if (value.length === 10) {
+            let prefix = value.substring(0, 2);
+            isValid = ['03', '05', '01', '09', '07','08'].includes(prefix);
+        }
+        
+        // Hiển thị thông báo lỗi
+        let errorElement = document.getElementById(errorId);
+        if (!isValid && value.length > 0) {
+            errorElement.style.display = 'block';
+            input.classList.add('is-invalid');
+        } else {
+            errorElement.style.display = 'none';
+            input.classList.remove('is-invalid');
+        }
+        
+        return isValid;
+    },
+
+    // Tính tổng khối lượng sản phẩm
+    calculateTotalProductWeight: function() {
+        let totalWeight = 0;
+        const weightInputs = document.querySelectorAll('input[name="product-weight[]"]');
+        const quantityInputs = document.querySelectorAll('input[name="product-quantity[]"]');
+        
+        for (let i = 0; i < weightInputs.length; i++) {
+            const weight = parseFloat(weightInputs[i].value) || 0;
+            const quantity = parseInt(quantityInputs[i].value) || 0;
+            totalWeight += weight * quantity;
+        }
+        
+        return totalWeight;
+    },
+
+    // Validate khối lượng đơn hàng
+    validateOrderWeight: function() {
+        const orderWeight = parseFloat(document.getElementById('total-weight').value) || 0;
+        const totalProductWeight = this.calculateTotalProductWeight();
+        const errorElement = document.getElementById('weight_error');
+        
+        if (orderWeight < totalProductWeight) {
+            errorElement.style.display = 'block';
+            document.getElementById('total-weight').classList.add('is-invalid');
+            return false;
+        } else {
+            errorElement.style.display = 'none';
+            document.getElementById('total-weight').classList.remove('is-invalid');
+            return true;
+        }
+    },
+
+    // Validate số tiền
+    validateAmount: function(input, errorId) {
+        // Chỉ cho phép nhập số
+        let value = input.value.replace(/[^\d]/g, '');
+        input.value = value;
+        
+        // Chuyển đổi thành số
+        let numValue = parseInt(value) || 0;
+        
+        // Lấy element hiển thị lỗi
+        let errorElement = document.getElementById(errorId);
+        
+        // Kiểm tra điều kiện
+        if (numValue < 1000 || numValue > 50000000) {
+            errorElement.style.display = 'block';
+            input.classList.add('is-invalid');
+            return false;
+        } else {
+            errorElement.style.display = 'none';
+            input.classList.remove('is-invalid');
+            return true;
+        }
+    }
+};
+
+// Khởi tạo các event listener
+document.addEventListener('DOMContentLoaded', function() {
+    // Phone validation
+    let senderPhone = document.getElementById('sender_phone');
+    let receiverPhone = document.getElementById('receiver_phone');
+    
+    if (senderPhone) {
+        senderPhone.addEventListener('input', function() {
+            Validation.validatePhone(this, 'sender_phone_error');
+        });
+    }
+    
+    if (receiverPhone) {
+        receiverPhone.addEventListener('input', function() {
+            Validation.validatePhone(this, 'receiver_phone_error');
+        });
+    }
+
+    // Weight validation
+    const weightInputs = document.querySelectorAll('input[name="product-weight[]"], input[name="product-quantity[]"]');
+    weightInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            Validation.validateOrderWeight();
+        });
+    });
+
+    document.getElementById('total-weight').addEventListener('input', function() {
+        Validation.validateOrderWeight();
+    });
+
+    // Amount validation
+    document.getElementById('product-value').addEventListener('input', function() {
+        Validation.validateAmount(this, 'product_value_error');
+    });
+
+    document.getElementById('COD').addEventListener('input', function() {
+        Validation.validateAmount(this, 'cod_error');
+    });
+
+    // Form submission
+    document.querySelector('form').addEventListener('submit', function(e) {
+        let isValid = true;
+        
+        // Validate phone numbers
+        if (!Validation.validatePhone(document.getElementById('sender_phone'), 'sender_phone_error')) {
+            isValid = false;
+        }
+        if (!Validation.validatePhone(document.getElementById('receiver_phone'), 'receiver_phone_error')) {
+            isValid = false;
+        }
+        
+        // Validate weight
+        if (!Validation.validateOrderWeight()) {
+            isValid = false;
+        }
+        
+        // Validate amounts
+        if (!Validation.validateAmount(document.getElementById('product-value'), 'product_value_error')) {
+            isValid = false;
+        }
+        if (!Validation.validateAmount(document.getElementById('COD'), 'cod_error')) {
+            isValid = false;
+        }
+
+        if (!isValid) {
+            e.preventDefault();
+            alert('Vui lòng kiểm tra lại thông tin đơn hàng!');
+        }
+    });
+});
+</script>

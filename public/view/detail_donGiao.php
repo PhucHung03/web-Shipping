@@ -129,7 +129,23 @@
                                 </tr>
                                 <tr>
                                     <th>Sản phẩm:</th>
-                                    <td><?php echo htmlspecialchars($order['products'] ?? 'Không có'); ?></td>
+                                    <td>
+                                        <?php
+                                        if (!empty($products)) {
+                                            foreach ($products as $index => $product) {
+                                                echo htmlspecialchars($product['tenSanPham']);
+                                                if (isset($product['soLuong'])) {
+                                                    echo " <span class='qty'>x" . $product['soLuong'] . "</span>";
+                                                }
+                                                if ($index < count($products) - 1) {
+                                                    echo "<br>";
+                                                }
+                                            }
+                                        } else {
+                                            echo 'Không có';
+                                        }
+                                        ?>
+                                    </td>
                                 </tr>
                                 <tr>
                                     <th>Khối lượng:</th>

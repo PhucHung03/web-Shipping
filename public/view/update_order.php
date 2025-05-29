@@ -19,11 +19,11 @@ if (isset($_GET['maVanDon'])) {
     
     try {
         // truy vấn đơn hàng
-        $sql = "SELECT o.maVanDon, o.ngayTaoDon, o.COD, o.giaTriHang, o.ghiChu,
+        $sql = "SELECT o.maVanDon, o.ngayTaoDon, o.COD, o.giaTriHang, o.ghiChu,o.KL_DH,
                        s.tenNguoiGui, s.sdtNguoiGui, s.diaChiNguoiGui,
                        r.tenNguoiNhan, r.soDienThoai,
                        a.diaChiNguoiNhan, a.tinh_tp, a.quan_huyen, a.phuong_xa,
-                       f.tongPhi, f.phiDichVu, f.phiKhaiGia, f.benTraPhi,
+                       f.tongPhi, f.phiDichVu, f.phiKhaiGia, f.benTraPhi,f.phiCOD,
                        os.tenTrangThai as trangThai,
                        sp.tenSanPham, sp.soLuong, sp.khoiLuong
                 FROM donHang o
@@ -58,6 +58,7 @@ if (isset($_GET['maVanDon'])) {
 }
 
 if (isset($maVanDon)) {
+    $stmt = $conn->prepare("SELECT id_sanPham, tenSanPham, soLuong, khoiLuong, maSP FROM sanpham WHERE maVanDon = ?");
     $stmt = $conn->prepare("SELECT id_sanPham, tenSanPham, soLuong, khoiLuong, maSP FROM sanpham WHERE maVanDon = ?");
     $stmt->bind_param("s", $maVanDon);
     $stmt->execute();
@@ -267,16 +268,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$error) {
                         <div class="col-md-6">
                             <h4 class="mb-3">Thông tin phí</h4>
                             <div class="mb-3">
+                                <label class="form-label">Phí COD (VNĐ)</label>
+                                <input type="number" class="form-control" id="phiCOD" name="phiCOD" value="<?php echo $order['COD']; ?>">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Tổng khối lượng đơn hàng (gram)</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="total-weight" name="KL_DH" value="<?php echo $order['KL_DH']; ?>">
+                                    <div class="invalid-feedback" id="weight-error"></div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
                                 <label class="form-label">Phí dịch vụ (VNĐ)</label>
-                                <input type="number" class="form-control" name="phiDichVu" value="<?php echo $order['phiDichVu']; ?>" required>
+                                <input type="number" class="form-control" id="phiDichVu" name="phiDichVu" value="<?php echo $order['phiDichVu']; ?>" readonly>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Phí khai giá (VNĐ)</label>
-                                <input type="number" class="form-control" name="phiKhaiGia" value="<?php echo $order['phiKhaiGia']; ?>" required>
+                                <input type="number" class="form-control" id="phiKhaiGia" name="phiKhaiGia" value="<?php echo $order['phiKhaiGia']; ?>" readonly>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Tổng phí (VNĐ)</label>
-                                <input type="number" class="form-control" name="tongPhi" value="<?php echo $order['tongPhi']; ?>" required>
+                                <input type="number" class="form-control" id="tongPhi" name="tongPhi" value="<?php echo $order['tongPhi']; ?>" readonly>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -328,38 +340,172 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$error) {
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('add-product-btn').onclick = function() {
-        var row = document.createElement('div');
-        row.className = 'row align-items-end mb-2 product-row';
-        row.innerHTML = `
-            <input type="hidden" name="product_id[]" value="">
-            <div class="col-md-3">
-                <label>Tên sản phẩm</label>
-                <input type="text" class="form-control" name="product_name[]" required>
-            </div>
-            <div class="col-md-2">
-                <label>Số lượng</label>
-                <input type="number" class="form-control" name="product_quantity[]" min="1" required>
-            </div>
-            <div class="col-md-2">
-                <label>Khối lượng (gram)</label>
-                <input type="number" class="form-control" name="product_weight[]" min="0" required>
-            </div>
-            <div class="col-md-3">
-                <label>Mã sản phẩm</label>
-                <input type="text" class="form-control" name="product_code[]">
-            </div>
-            <div class="col-md-2">
-                <button type="button" class="btn btn-danger btn-remove-product">Xóa</button>
-            </div>
-        `;
-        document.getElementById('product-list').appendChild(row);
-    };
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('btn-remove-product')) {
-            e.target.closest('.product-row').remove();
-        }
+function formatCurrency(value) {
+    return value.toLocaleString("vi-VN") + " đ";
+}
+
+let currentShipCost = 0;
+let currentKhaiGia = 0;
+let currentCod = 0;
+
+function calculateTotalProductWeight() {
+    let total = 0;
+    const weights = document.querySelectorAll('input[name="product_weight[]"]');
+    const quantities = document.querySelectorAll('input[name="product_quantity[]"]');
+
+    weights.forEach((weightInput, index) => {
+        const weight = parseFloat(weightInput.value) || 0;
+        const quantity = parseInt(quantities[index].value) || 0;
+        total += weight * quantity;
     });
+
+    return total;
+}
+
+function showError(inputElement, message) {
+    const errorElement = document.getElementById('weight-error');
+    errorElement.textContent = message;
+    inputElement.classList.add('is-invalid');
+}
+
+function hideError(inputElement) {
+    const errorElement = document.getElementById('weight-error');
+    errorElement.textContent = '';
+    inputElement.classList.remove('is-invalid');
+}
+
+function updateShipCost() {
+    const weightInput = document.getElementById("total-weight");
+    const costShipInput = document.getElementById("phiDichVu");
+    const totalProductWeight = calculateTotalProductWeight();
+    const orderWeight = parseFloat(weightInput.value) || 0;
+
+    // Validate order weight
+    if (orderWeight < totalProductWeight) {
+        showError(weightInput, `Tổng khối lượng đơn hàng phải lớn hơn hoặc bằng tổng khối lượng sản phẩm (${totalProductWeight} gram)`);
+        weightInput.value = totalProductWeight;
+        return;
+    } else {
+        hideError(weightInput);
+    }
+
+    if (orderWeight > 0) {
+        currentShipCost = orderWeight > 20000 ? 80000 : 24000;
+        costShipInput.value = currentShipCost;
+    } else {
+        currentShipCost = 0;
+        costShipInput.value = "";
+    }
+
+    updateTotalCost();
+}
+
+function updateCodCost() {
+    const codInput = document.getElementById("phiCOD");
+    const khaiGiaInput = document.getElementById("phiKhaiGia");
+
+    const codAmount = parseFloat(codInput.value) || 0;
+
+    if (codAmount > 0) {
+        currentCod = codAmount;
+        
+        if (codAmount >= 1000000) {
+            currentKhaiGia = Math.round(codAmount * 0.005);
+            khaiGiaInput.value = currentKhaiGia;
+        } else {
+            currentKhaiGia = 0;
+            khaiGiaInput.value = "";
+        }
+    } else {
+        currentCod = 0;
+        currentKhaiGia = 0;
+        khaiGiaInput.value = "";
+    }
+
+    updateTotalCost();
+}
+
+function updateTotalCost() {
+    const totalInput = document.getElementById("tongPhi");
+    const total = currentShipCost + currentCod + currentKhaiGia;
+
+    if (total > 0) {
+        totalInput.value = total;
+    } else {
+        totalInput.value = "";
+    }
+}
+
+function validateOrderWeight() {
+    const weightInput = document.getElementById("total-weight");
+    const totalProductWeight = calculateTotalProductWeight();
+    const orderWeight = parseFloat(weightInput.value) || 0;
+    
+    if (orderWeight < totalProductWeight) {
+        showError(weightInput, `Tổng khối lượng đơn hàng phải lớn hơn hoặc bằng tổng khối lượng sản phẩm (${totalProductWeight} gram)`);
+        weightInput.value = totalProductWeight;
+        updateShipCost();
+    } else {
+        hideError(weightInput);
+    }
+}
+
+window.addEventListener("DOMContentLoaded", function () {
+    // Add event listeners for COD input
+    document.getElementById("phiCOD").addEventListener("input", updateCodCost);
+    
+    // Add event listener for total weight input
+    document.getElementById("total-weight").addEventListener("input", updateShipCost);
+    
+    // Add event listeners for product weight and quantity changes
+    document.querySelectorAll('input[name="product_weight[]"], input[name="product_quantity[]"]').forEach(input => {
+        input.addEventListener("input", validateOrderWeight);
+    });
+    
+    // Initial calculations
+    updateShipCost();
+    updateCodCost();
+});
+
+// Tạo dòng sản phẩm mới
+document.getElementById('add-product-btn').onclick = function() {
+    var row = document.createElement('div');
+    row.className = 'row align-items-end mb-2 product-row';
+    row.innerHTML = `
+        <input type="hidden" name="product_id[]" value="">
+        <div class="col-md-3">
+            <label>Tên sản phẩm</label>
+            <input type="text" class="form-control" name="product_name[]" required>
+        </div>
+        <div class="col-md-2">
+            <label>Số lượng</label>
+            <input type="number" class="form-control" name="product_quantity[]" value="1" min="1" required>
+        </div>
+        <div class="col-md-2">
+            <label>Khối lượng (gram)</label>
+            <input type="number" class="form-control" name="product_weight[]" value="200" min="0" required>
+        </div>
+        <div class="col-md-3">
+            <label>Mã sản phẩm</label>
+            <input type="text" class="form-control" name="product_code[]">
+        </div>
+        <div class="col-md-2">
+            <button type="button" class="btn btn-danger btn-remove-product">Xóa</button>
+        </div>
+    `;
+    document.getElementById('product-list').appendChild(row);
+    
+    // Add event listeners to new inputs
+    row.querySelectorAll('input[name="product_weight[]"], input[name="product_quantity[]"]').forEach(input => {
+        input.addEventListener("input", validateOrderWeight);
+    });
+};
+
+// Add event listener for remove product buttons
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('btn-remove-product')) {
+        e.target.closest('.product-row').remove();
+        validateOrderWeight();
+    }
 });
 </script> 
